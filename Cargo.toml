@@ -1,0 +1,23 @@
+[package]
+name = "macos-tags"
+version = "0.1.0"
+edition = "2021"
+authors = ["ecklf <ecklf@icloud.com>"]
+description = "Rust library for modifying macOS tags"
+documentation = "https://docs.rs/macos-tags"
+repository = "https://github.com/ecklf/macos-tags"
+keywords = ["macos", "tags", "mac", "osx"]
+readme = "readme.md"
+license = "MIT"
+include = ["src/**/*", "LICENSE.md", "README.md", "CHANGELOG.md"]
+
+[dependencies]
+xattr = "1.3.1"
+plist = "1.6.1"
+thiserror = "1.0.60"
+
+[lib]
+path = "src/lib.rs"
+
+[dev-dependencies]
+test-utilities = { path = "test-utilities" }
