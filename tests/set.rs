@@ -1,22 +1,20 @@
-use macos_tags::{self, add_tag, read_tags, set_tags, Tag};
-use std::error::Error;
+use macos_tags::{self, add_tag, set_tags, Tag};
+use std::{collections::HashSet, error::Error};
 use test_utilities::run_file_test;
 
 #[test]
 fn adds_single_tag() -> Result<(), Box<dyn Error>> {
     run_file_test(|p| {
-        add_tag(p, Tag::Green)?;
-        let tags = read_tags(p)?;
-        assert_eq!(tags, vec![Tag::Green]);
+        let result = add_tag(p, Tag::Green)?;
+        let expect: HashSet<Tag> = [Tag::Green].into();
+        assert_eq!(result, expect);
         // Ensure that adding a tag does not modify the existing tag(s)
-        add_tag(p, Tag::Red)?;
-        let tags = read_tags(p)?;
-        assert!(tags.contains(&Tag::Green));
-        assert!(tags.contains(&Tag::Red));
+        let result = add_tag(p, Tag::Red)?;
+        assert!(result.contains(&Tag::Green));
+        assert!(result.contains(&Tag::Red));
         // Ensure that adding a tag multiple times does not duplicate it
-        add_tag(p, Tag::Red)?;
-        let tags = read_tags(p)?;
-        assert!(tags.len() == 2);
+        let result = add_tag(p, Tag::Red)?;
+        assert!(result.len() == 2);
         Ok(())
     })
 }
@@ -25,11 +23,10 @@ fn adds_single_tag() -> Result<(), Box<dyn Error>> {
 fn sets_all_tags() -> Result<(), Box<dyn Error>> {
     run_file_test(|p| {
         add_tag(p, Tag::Green)?;
-        set_tags(p, vec![Tag::Red, Tag::Orange])?;
-        let tags = read_tags(p)?;
-        assert!(!tags.contains(&Tag::Green));
-        assert!(tags.contains(&Tag::Red));
-        assert!(tags.contains(&Tag::Orange));
+        let result = set_tags(p, [Tag::Red, Tag::Orange].into())?;
+        assert!(!result.contains(&Tag::Green));
+        assert!(result.contains(&Tag::Red));
+        assert!(result.contains(&Tag::Orange));
         Ok(())
     })
 }

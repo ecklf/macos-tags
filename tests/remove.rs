@@ -1,5 +1,5 @@
-use macos_tags::{self, add_tag, prune_tags, read_tags, remove_tag, Tag};
-use std::error::Error;
+use macos_tags::{self, add_tag, prune_tags, remove_tag, Tag};
+use std::{collections::HashSet, error::Error};
 use test_utilities::run_file_test;
 
 #[test]
@@ -7,9 +7,9 @@ fn removes_single_tag() -> Result<(), Box<dyn Error>> {
     run_file_test(|p| {
         add_tag(p, Tag::Green)?;
         add_tag(p, Tag::Red)?;
-        remove_tag(p, Tag::Red)?;
-        let tags = read_tags(p)?;
-        assert_eq!(tags, vec![Tag::Green]);
+        let result = remove_tag(p, Tag::Red)?;
+        let expect: HashSet<Tag> = [Tag::Green].into();
+        assert_eq!(result, expect);
         Ok(())
     })
 }
@@ -19,9 +19,9 @@ fn prunes_tags() -> Result<(), Box<dyn Error>> {
     run_file_test(|p| {
         add_tag(p, Tag::Green)?;
         add_tag(p, Tag::Red)?;
-        prune_tags(p)?;
-        let tags = read_tags(p)?;
-        assert_eq!(tags, vec![]);
+        let result = prune_tags(p)?;
+        let expect: HashSet<Tag> = [].into();
+        assert_eq!(result, expect);
         Ok(())
     })
 }

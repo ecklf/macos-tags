@@ -7,7 +7,7 @@
 use std::{collections::HashSet, fmt, io, path::Path};
 use thiserror::Error;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 /// Represents a macOS tag
 pub enum Tag {
     /// Gray tag color
@@ -97,37 +97,42 @@ impl Tag {
 ///     Ok(())
 /// }
 /// ```
-pub fn add_tag(path: &Path, tag: Tag) -> Result<(), TagError> {
-    let existing_tags =
+pub fn add_tag(path: &Path, tag: Tag) -> Result<HashSet<Tag>, TagError> {
+    let tag_metadata =
         xattr::get(path, "com.apple.metadata:_kMDItemUserTags").map_err(TagError::XAttr)?;
 
-    let final_tags = match existing_tags {
+    let parsed_tags = match tag_metadata {
         Some(t) => plist::from_bytes::<plist::Value>(&t).map_err(TagError::Plist)?,
         None => plist::Value::Array(vec![]),
     };
 
-    match final_tags {
+    match parsed_tags {
         plist::Value::Array(t) => {
             // Converting into HashSet because `dedup` doesn't seem to work
-            let mut existing_set = t.iter().fold(HashSet::new(), |mut acc, x| {
+            let mut existing_tag_set = t.iter().fold(HashSet::new(), |mut acc, x| {
                 if let plist::Value::String(s) = x {
-                    acc.insert(s);
+                    acc.insert(s.to_owned());
                 }
                 acc
             });
 
-            let tag_to_add = tag.to_string();
-            existing_set.insert(&tag_to_add);
+            existing_tag_set.insert(tag.to_string());
 
-            let final_tags = existing_set
+            let tags_to_set = &existing_tag_set
                 .iter()
-                .map(|x| plist::Value::String(x.to_string()))
+                .map(|t| plist::Value::String(t.to_string()))
                 .collect::<Vec<_>>();
 
+            let final_tag_set = existing_tag_set
+                .iter()
+                .map(|t| Tag::from_string(t))
+                .collect::<Result<HashSet<_>, TagError>>()?;
+
             let mut binary_buffer: Vec<u8> = vec![];
-            plist::to_writer_binary(&mut binary_buffer, &final_tags).map_err(TagError::Plist)?;
+            plist::to_writer_binary(&mut binary_buffer, &tags_to_set).map_err(TagError::Plist)?;
             xattr::set(path, "com.apple.metadata:_kMDItemUserTags", &binary_buffer)
-                .map_err(TagError::XAttr)
+                .map_err(TagError::XAttr)?;
+            Ok(final_tag_set)
         }
         _ => Err(TagError::Unknown),
     }
@@ -142,26 +147,22 @@ pub fn add_tag(path: &Path, tag: Tag) -> Result<(), TagError> {
 /// use macos_tags::{set_tags, Tag};
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let p = Path::new("./readme.md");
-///     set_tags(p, vec![Tag::Green, Tag::Red])?;
+///     set_tags(p, [Tag::Green, Tag::Red].into())?;
 ///     Ok(())
 /// }
 /// ```
-pub fn set_tags(path: &Path, tags: Vec<Tag>) -> Result<(), TagError> {
-    let deduped = tags
+pub fn set_tags(path: &Path, tags: HashSet<Tag>) -> Result<HashSet<Tag>, TagError> {
+    let tags_to_set = &tags
         .iter()
-        .fold(HashSet::new(), |mut acc: HashSet<String>, x| {
-            acc.insert(x.to_string());
-            acc
-        });
-
-    let final_tags = deduped
-        .iter()
-        .map(|x| plist::Value::String(x.to_owned()))
+        .map(|t| plist::Value::String(t.to_string()))
         .collect::<Vec<_>>();
 
     let mut binary_buffer: Vec<u8> = vec![];
-    plist::to_writer_binary(&mut binary_buffer, &final_tags).map_err(TagError::Plist)?;
-    xattr::set(path, "com.apple.metadata:_kMDItemUserTags", &binary_buffer).map_err(TagError::XAttr)
+    plist::to_writer_binary(&mut binary_buffer, &tags_to_set).map_err(TagError::Plist)?;
+    xattr::set(path, "com.apple.metadata:_kMDItemUserTags", &binary_buffer)
+        .map_err(TagError::XAttr)?;
+
+    Ok(tags)
 }
 
 /// Removes a tag for provided file
@@ -177,37 +178,42 @@ pub fn set_tags(path: &Path, tags: Vec<Tag>) -> Result<(), TagError> {
 ///     Ok(())
 /// }
 /// ```
-pub fn remove_tag(path: &Path, tag: Tag) -> Result<(), TagError> {
-    let existing_tags =
+pub fn remove_tag(path: &Path, tag: Tag) -> Result<HashSet<Tag>, TagError> {
+    let tag_metadata =
         xattr::get(path, "com.apple.metadata:_kMDItemUserTags").map_err(TagError::XAttr)?;
 
-    let final_tags = match existing_tags {
+    let parsed_tags = match tag_metadata {
         Some(t) => plist::from_bytes::<plist::Value>(&t).map_err(TagError::Plist)?,
         None => plist::Value::Array(vec![]),
     };
 
-    match final_tags {
+    match parsed_tags {
         plist::Value::Array(t) => {
             // Converting into HashSet because `dedup` doesn't seem to work
-            let mut existing_set = t.iter().fold(HashSet::new(), |mut acc, x| {
+            let mut existing_tag_set = t.iter().fold(HashSet::new(), |mut acc, x| {
                 if let plist::Value::String(s) = x {
-                    acc.insert(s);
+                    acc.insert(s.to_owned());
                 }
                 acc
             });
 
-            let tag_to_remove = tag.to_string();
-            existing_set.remove(&tag_to_remove);
+            existing_tag_set.remove(&tag.to_string());
 
-            let final_tags = existing_set
+            let tags_to_set = &existing_tag_set
                 .iter()
-                .map(|x| plist::Value::String(x.to_string()))
+                .map(|t| plist::Value::String(t.to_string()))
                 .collect::<Vec<_>>();
 
+            let final_tag_set = existing_tag_set
+                .iter()
+                .map(|t| Tag::from_string(t))
+                .collect::<Result<HashSet<_>, TagError>>()?;
+
             let mut binary_buffer: Vec<u8> = vec![];
-            plist::to_writer_binary(&mut binary_buffer, &final_tags).map_err(TagError::Plist)?;
+            plist::to_writer_binary(&mut binary_buffer, &tags_to_set).map_err(TagError::Plist)?;
             xattr::set(path, "com.apple.metadata:_kMDItemUserTags", &binary_buffer)
-                .map_err(TagError::XAttr)
+                .map_err(TagError::XAttr)?;
+            Ok(final_tag_set)
         }
         _ => Err(TagError::Unknown),
     }
@@ -226,8 +232,9 @@ pub fn remove_tag(path: &Path, tag: Tag) -> Result<(), TagError> {
 ///     Ok(())
 /// }
 /// ```
-pub fn prune_tags(path: &Path) -> Result<(), TagError> {
-    xattr::remove(path, "com.apple.metadata:_kMDItemUserTags").map_err(TagError::XAttr)
+pub fn prune_tags(path: &Path) -> Result<HashSet<Tag>, TagError> {
+    xattr::remove(path, "com.apple.metadata:_kMDItemUserTags").map_err(TagError::XAttr)?;
+    Ok(HashSet::<Tag>::with_capacity(0))
 }
 
 /// Reads tags for provided file
@@ -243,18 +250,18 @@ pub fn prune_tags(path: &Path) -> Result<(), TagError> {
 ///     Ok(())
 /// }
 /// ```
-pub fn read_tags(path: &Path) -> Result<Vec<Tag>, TagError> {
-    let existing_tags =
+pub fn read_tags(path: &Path) -> Result<HashSet<Tag>, TagError> {
+    let tag_metadata =
         xattr::get(path, "com.apple.metadata:_kMDItemUserTags").map_err(TagError::XAttr)?;
 
-    let tags = match existing_tags {
+    let existing_tags = match tag_metadata {
         Some(t) => plist::from_bytes::<plist::Value>(&t).map_err(TagError::Plist)?,
         None => plist::Value::Array(vec![]),
     };
 
-    match tags {
+    match existing_tags {
         plist::Value::Array(t) => {
-            let parsed_tags = t
+            let parsed_tags: HashSet<Tag> = t
                 .iter()
                 .filter_map(|t| {
                     if let plist::Value::String(s) = t {
@@ -266,7 +273,7 @@ pub fn read_tags(path: &Path) -> Result<Vec<Tag>, TagError> {
                         None
                     }
                 })
-                .collect::<Vec<Tag>>();
+                .collect::<HashSet<Tag>>();
 
             Ok(parsed_tags)
         }
