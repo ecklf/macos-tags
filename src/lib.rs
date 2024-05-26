@@ -4,10 +4,11 @@
 
 //! Rust library for modifying macOS tags
 
+use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, fmt, io, path::Path};
 use thiserror::Error;
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Represents a macOS tag
 pub enum Tag {
     /// Gray tag color
