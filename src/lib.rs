@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, fmt, io, path::Path};
 use thiserror::Error;
 
-#[derive(Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Represents a macOS tag
 pub enum Tag {
     /// Gray tag color
@@ -29,7 +29,7 @@ pub enum Tag {
     Custom(String),
 }
 
-#[derive(Error, Debug)]
+#[derive(Debug, Error)]
 /// Represents an error that can occur when working with tags
 pub enum TagError {
     /// Error when working with extended attributes
