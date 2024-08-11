@@ -94,11 +94,11 @@ impl Tag {
 /// use macos_tags::{add_tag, Tag};
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let p = Path::new("./readme.md");
-///     add_tag(p, Tag::Green)?;
+///     add_tag(p, &Tag::Green)?;
 ///     Ok(())
 /// }
 /// ```
-pub fn add_tag(path: &Path, tag: Tag) -> Result<HashSet<Tag>, TagError> {
+pub fn add_tag(path: &Path, tag: &Tag) -> Result<HashSet<Tag>, TagError> {
     let tag_metadata =
         xattr::get(path, "com.apple.metadata:_kMDItemUserTags").map_err(TagError::XAttr)?;
 
@@ -148,11 +148,11 @@ pub fn add_tag(path: &Path, tag: Tag) -> Result<HashSet<Tag>, TagError> {
 /// use macos_tags::{set_tags, Tag};
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let p = Path::new("./readme.md");
-///     set_tags(p, [Tag::Green, Tag::Red].into())?;
+///     set_tags(p, &[Tag::Green, Tag::Red].into())?;
 ///     Ok(())
 /// }
 /// ```
-pub fn set_tags(path: &Path, tags: HashSet<Tag>) -> Result<HashSet<Tag>, TagError> {
+pub fn set_tags(path: &Path, tags: &HashSet<Tag>) -> Result<HashSet<Tag>, TagError> {
     let tags_to_set = &tags
         .iter()
         .map(|t| plist::Value::String(t.to_string()))
@@ -163,7 +163,7 @@ pub fn set_tags(path: &Path, tags: HashSet<Tag>) -> Result<HashSet<Tag>, TagErro
     xattr::set(path, "com.apple.metadata:_kMDItemUserTags", &binary_buffer)
         .map_err(TagError::XAttr)?;
 
-    Ok(tags)
+    Ok(tags.clone())
 }
 
 /// Removes a tag for provided file
@@ -175,11 +175,11 @@ pub fn set_tags(path: &Path, tags: HashSet<Tag>) -> Result<HashSet<Tag>, TagErro
 /// use macos_tags::{remove_tag, Tag};
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let p = Path::new("./readme.md");
-///     remove_tag(p, Tag::Green)?;
+///     remove_tag(p, &Tag::Green)?;
 ///     Ok(())
 /// }
 /// ```
-pub fn remove_tag(path: &Path, tag: Tag) -> Result<HashSet<Tag>, TagError> {
+pub fn remove_tag(path: &Path, tag: &Tag) -> Result<HashSet<Tag>, TagError> {
     let tag_metadata =
         xattr::get(path, "com.apple.metadata:_kMDItemUserTags").map_err(TagError::XAttr)?;
 

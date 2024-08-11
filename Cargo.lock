@@ -104,7 +104,7 @@ checksum = "01cda141df6706de531b6c46c3a33ecca755538219bd484262fa09410c13539c"
 
 [[package]]
 name = "macos-tags"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "plist",
  "serde",
